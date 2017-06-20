@@ -1,5 +1,6 @@
 package com.yuand.study.xls;
 
+import com.yuand.study.domain.Postal;
 import com.yuand.study.util.POIExcelUtil;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.poi.ss.usermodel.Workbook;
@@ -21,64 +22,74 @@ public class PasePostal {
 
     static {
         /**
-         * 民生银行数据解析
-         * header:交易日期","主机交易流水号","借方发生额","贷方发生额","账户余额","凭证号","摘要","对方账号","对方账号名称","对方开户行","交易时间
-         * headerSize: 11
+         * 数据源
+         * header:"邮件号","收寄时间","机构名称","产品名称","大客户","寄达地","揽收员","重量","长","宽","高","体积重",计费重量,优惠率,实际优惠率,邮资,保价金额,保险金额,总邮资,标准邮资,件数,内件数
+         * headerSize: 22
 
-         * 建行数据解析
-         * header:"记账日期","交易时间","凭证种类","凭证号","借方发生额/元","贷方发生额/元","余额/元","钞汇标志","对方户名","对方账号","摘要","备注",
-         *        "账户明细编号-交易流水号","企业流水号","本方账号","本方账户名称","本方账户开户机构"
-         * headerSize : 17
+         * 标间收支（产品名称不包含《国内快递包裹物品经济时限》）  快包收支（产品名称为《国内快递包裹物品经济时限》）
+         * header:"邮件号","收寄时间","机构名称","产品名称","大客户","寄达地","揽收员","重量","长","宽","高","体积重",
+         *  计费重量,优惠率,实际优惠率,邮资,保价金额,保险金额,总邮资,标准邮资,件数,内件数,
+         *  业务量（件）,总重量（千克）,费用合计,揽收,内部处理（经转+分拣+投递）,航空,一干陆运,一干陆运
+         *
+         * 业务量（件） = 件数
+         * 总重量（千克） = 计费重量/1000
+         * 揽收 = 总邮资 * 0.15
+         * 内部处理（经转+分拣+投递）(IF(总重量/业务量<=3,2.1,IF(总重量/业务量<=5,(ROUNDUP(总重量/业务量,0)-3)*0.6+2.1,(ROUNDUP(总重量/业务量,0)-5)*0.7+3.3))+总重量*0.09)*业务量
+         * 航空 = SUMIF(单价表!A:A,寄达地,单价表!E:E)*总重量
+         * 一干陆运 = SUMIF(单价表!A:A,寄达地,单价表!M:M)*总重量
+         * 二干陆运 = SUMIF(单价表!A:A,寄达地,单价表!G:G)*总重量
+         *
+         * 费用合计 = 揽收 + 内部处理 + 航空 + 一干陆运 + 二干陆运
+         *
+         * headerSize : 30
 
-         * 工行数据解析
-         * header:
-         * old      "凭证号","本方账号","对方账号","交易时间","借/贷","借方发生额","贷方发生额","对方行号","摘要","用途","对方单位名称","余额","个性化信息" 13
-         * new      "本方账号","对方账号","交易时间","借/贷","金额","凭证号","对方单位","对方行号","用途","摘要","附言","个性化信息" 12
-         * headerSize 13
-
-         * 平安银行数据解析
-         * header:"交易日期","账号","借","贷","账户余额","对方账户","对方账户名称","交易流水号","摘要","用途"
-         * headerSize:10
-
-         * 农行数据解析
-         * headers:
-         * old      "交易日期","交易时间戳","收入金额","支出金额","本次余额","手续费总额","交易方式","交易行名","交易类别","对方省市","对方账号","对方户名","交易说明","交易摘要","交易附言" 15
-         * new      "交易时间","收入金额","支出金额","账户余额","交易行名","对方省市","对方账号","对方户名","交易用途" 9
-         * headerSize:15
+         * 基础表
+         * header: "省份名称","地名名称","分区","省会","省内运程(km)","到省运程(km)","省外运程(km)","总运程(km)"
+         * headerSize 8
+         *
+         * 单价表
+         * header: '类型（省际部分-标准、省际部分-快包、省内部分）', "起","始","航空公司","距离","内部处理结算","航空结算","一干陆运结算","二干陆运结算",
+         * headerSize 8
          */
-        //民生
-        String[] header1 = new String[]{"交易日期", "主机交易流水号", "借方发生额", "贷方发生额", "账户余额", "凭证号", "摘要", "对方账号", "对方账号名称", "对方开户行", "交易时间"};
-        //建行
-        String[] header2 = new String[]{"记账日期", "交易时间", "凭证种类", "凭证号", "借方", "贷方", "余额/元", "钞汇标志", "对方户名", "对方账号", "摘要", "备注",
-                "账户明细编号-交易流水号", "企业流水号", "本方账号", "本方账户名称", "本方账户开户机构"};
-        //工行
-        String[] header3 = new String[]{"本方账号", "对方账号", "交易时间", "借/贷", "金额", "凭证号", "对方单位", "对方行号", "用途", "摘要", "附言", "个性化信息"};
-        //平安
-        String[] header4 = new String[]{"交易日期", "账号", "借", "贷", "账户余额", "对方账户", "对方账户名称", "交易流水号", "摘要", "用途"};
-        //农行
-        String[] header5 = new String[]{"交易时间", "收入金额", "支出金额", "账户余额", "交易行名", "对方省市", "对方账号", "对方户名", "交易用途"};
+        //数据源
+        String[] header1 = new String[]{"邮件号","收寄时间","机构名称","产品名称","大客户","寄达地","揽收员","重量","长","宽",
+                "高","体积重","计费重量","优惠率","实际优惠率","邮资","保价金额","保险金额","总邮资","标准邮资","件数","内件数"};
+        //标间收支  快包收支
+        String[] header2 = new String[]{"邮件号","收寄时间","机构名称","产品名称","大客户","寄达地","揽收员","重量","长","宽",
+                "高","体积重","计费重量","优惠率","实际优惠率","邮资","保价金额","保险金额","总邮资","标准邮资","件数","内件数",
+                "业务量（件）","总重量（千克）","费用合计","揽收","内部处理（经转+分拣+投递）","航空","一干陆运","一干陆运"
+        };
+        //基础表
+        String[] header3 = new String[]{"省份名称","地名名称","分区","省会","省内运程(km)","到省运程(km)","省外运程(km)","总运程(km)"};
+        //单价表
+        String[] header4 = new String[]{"类型（省际部分-标准、省际部分-快包、省内部分）", "起","始","航空公司","距离","内部处理结算","航空结算","一干陆运结算","二干陆运结算"};
         fileHeader.put(1, header1);
         fileHeader.put(2, header2);
         fileHeader.put(3, header3);
         fileHeader.put(4, header4);
-        fileHeader.put(5, header5);
-        fileHeader.put(6, header1);
     }
 
-    public Map<String, String> receiptVoucherImport(File file, Integer bankId) throws Exception {
-        String result = checkFileName(file, bankId);
-        HashMap<String, String> map = new HashMap();
+    /**
+     * 分析数据源
+     * @param file
+     * @param bankId
+     * @return
+     * @throws Exception
+     */
+    public Map<String, List<Postal>> analyseFile(File file, Integer bankId) throws Exception {
+        List<Postal> result = checkFileName(file, bankId);
+        HashMap<String, List<Postal>> map = new HashMap();
         map.put("result", result);
         return map;
     }
 
-    private String checkFileName(File file, Integer bankId) throws Exception {
+    private List<Postal> checkFileName(File file, Integer bankId) throws Exception {
         String fileName = file.getName();
-        if (fileName.contains("民生银行") && (bankId == 1 || bankId == 6)) {//民生银行=>贷方发生额(收)
+        if (fileName.contains("test") && (bankId == 1 || bankId == 6)) {
             List<ArrayList<String>> datas = getFileDatas(file, fileName, bankId);
-            return parseCMBC(datas, bankId);
+            return parsePostal(datas, bankId);
         }
-        return "";
+        return null;
     }
 
     private List<ArrayList<String>> getFileDatas(File file, String fileName, Integer bankId) throws Exception {
@@ -94,23 +105,8 @@ public class PasePostal {
     private void checkFileHead(List<ArrayList<String>> datas, Integer bankId ) throws Exception {
         List<String> headerList = null;
         String[] correctHead = fileHeader.get(bankId);
-        if (bankId == 1 || bankId == 6) {//民生银行
+        if (bankId == 1 || bankId == 6) {
             headerList = datas.get(11);
-        }
-        if (bankId == 2) {//建设银行
-            headerList = datas.get(5);
-            headerList.set(4, "借方");
-            headerList.set(5, "贷方");
-        }
-        if (bankId == 3) {//工商银行
-            headerList = datas.get(2);
-        }
-        if (bankId == 4) {//平安银行
-            headerList = datas.get(0);
-            return;
-        }
-        if (bankId == 5) {//农业银行
-            headerList = datas.get(0);
         }
     }
 
@@ -122,88 +118,140 @@ public class PasePostal {
      * @param datas
      * @return
      */
-    private String parseCMBC(List<ArrayList<String>> datas, Integer bankId) throws Exception {
-        for (int j = 12; j < datas.size(); j++) {
-            boolean isAdd = true;
+    private List<Postal> parsePostal(List<ArrayList<String>> datas, Integer bankId) throws Exception {
+        List<Postal> postalList = new ArrayList<Postal>();
+        for (int j = 3; j < datas.size(); j++) {
             List<String> line = datas.get(j);
+            Postal postal = new Postal();
             for (int i = 0; i < line.size(); i++) {
                 try {
                     String field = formatField(line.get(i));
                     if (StringUtils.isAllEmpty(field)) {
                         continue;
                     }
-                    //交易日期 ==> 记账日期（交易日期）
+                    //邮编号
                     if (i == 0) {
-                        //receiptLinesDto.setPaymentDate(field);
+                        postal.setPostalNo(field);
                         continue;
                     }
-                    //交易流水号 ==> 银行流水号
+                    //收寄时间
                     if (i == 1) {
-                        //receiptLinesDto.setBankJournalNo(field);
+                        postal.setSendTime(field);
                         continue;
                     }
-                    //借方发生额 ==> 借方发生额
+                    //机构名称
                     if (i == 2) {
-                        Double debit = new Double(field);
-                        if (debit > 0) {
-                            isAdd = false;
-                            break;
-                        }
+                        postal.setOrgName(field);
                         continue;
                     }
-                    //贷方发生额(收款) ==> 贷方发生额
-                    //民生银行=>贷方发生额
+                    //产品名称
                     if (i == 3) {
-                        Double credit = new Double(field);
-                        //receiptLinesDto.setCreditAmount(credit);
-                        //receiptLinesDto.setReceiptAmount(credit);
+                        postal.setProductName(field);
                         continue;
                     }
-                    //账户余额 ==> 当前余额
+                    //大客户
                     if (i == 4) {
-                        //receiptLinesDto.setBalance(new Double(field));
+                        postal.setCustomerName(field);
                         continue;
                     }
-                    //凭证号 ==> 凭证号
+                    //寄达地
                     if (i == 5) {
-                        //receiptLinesDto.setVoucher(field);
+                        postal.setAddress(field);
                         continue;
                     }
-                    //摘要 ==> 摘要备注
+                    //揽收员
                     if (i == 6) {
-                        if ("手续费".equals(field)) {
-                            isAdd = false;
-                            break;
-                        }
-                       // receiptLinesDto.setRemark(field);
+                        postal.setCourier(field);
                         continue;
                     }
-                    //对方账号 ==> 对方账号
+                    //重量
                     if (i == 7) {
-                        //receiptLinesDto.setOtherAccount(field);
+                        Integer weight = field == ""?0:new Integer(field);
+                        postal.setWeight(weight);
                         continue;
                     }
-                    //对方账号名称 ==>对方账号名称
+                    //长
                     if (i == 8) {
-                        //receiptLinesDto.setOtherName(field);
+                        Integer len = field == ""?0:new Integer(field);
+                        postal.setLen(len);
                         continue;
                     }
-                    //对方开户行
+                    //宽
                     if (i == 9) {
-                        //receiptLinesDto.setOtherBankName(field);
+                        Integer width = field == ""?0:new Integer(field);
+                        postal.setWidth(width);
                         continue;
                     }
-                    //交易时间 083533(时分秒)
+                    //高
                     if (i == 10) {
-                        if (field.length() == 5) {
-                            field = "0" + field;
-                        }
-                        if (field.length() == 4) {
-                            field = field + "00";
-                        }
-                        if (field.length() == 4) {
-                            field = field + "00";
-                        }
+                        Integer height = field == ""?0:new Integer(field);
+                        postal.setHeight(height);
+                        continue;
+                    }
+                    //体积重
+                    if (i == 11) {
+                        Integer volumeWeight = field == ""?0:new Integer(field);
+                        postal.setVolumeWeight(volumeWeight);
+                        continue;
+                    }
+                    //计费重量
+                    if (i == 12) {
+                        Integer chargedWeight = field == ""?0:new Integer(field);
+                        postal.setChargedWeight(chargedWeight);
+                        continue;
+                    }
+                    //优惠率
+                    if (i == 13) {
+                        Double rate = field == ""?0:new Double(field);
+                        postal.setRate(rate);
+                        continue;
+                    }
+                    //实际优惠率
+                    if (i == 14) {
+                        Double effectiveRate = field == ""?0:new Double(field);
+                        postal.setEffectiveRate(effectiveRate);
+                        continue;
+                    }
+                    //邮资
+                    if (i == 15) {
+                        Double postage = field == ""?0:new Double(field);
+                        postal.setPostage(postage);
+                        continue;
+                    }
+                    //保价金额
+                    if (i == 16) {
+                        Double bjAmount = field == ""?0:new Double(field);
+                        postal.setBjAmount(bjAmount);
+                        continue;
+                    }
+                    //保险金额
+                    if (i == 17) {
+                        Double insuredAmount = field == ""?0:new Double(field);
+                        postal.setInsuredAmount(insuredAmount);
+                        continue;
+                    }
+                    //总邮资
+                    if (i == 18) {
+                        Double totalPostage = field == ""?0:new Double(field);
+                        postal.setTotalPostage(totalPostage);
+                        continue;
+                    }
+                    //标准邮资
+                    if (i == 19) {
+                        Double standPostage = field == ""?0:new Double(field);
+                        postal.setStandPostage(standPostage);
+                        continue;
+                    }
+                    //件数
+                    if (i == 20) {
+                        Integer num = field == ""?0:new Integer(field);
+                        postal.setNum(num);
+                        continue;
+                    }
+                    //内件数
+                    if (i == 21) {
+                        Integer innerNum = field == ""?0:new Integer(field);
+                        postal.setInnerNum(innerNum);
                         continue;
                     }
                 } catch (Exception e) {
@@ -211,9 +259,15 @@ public class PasePostal {
                     throw new Exception("第：" + j + "行数据有问题,解析数据项：" + line.get(i) + "出错");
                 }
             }
+            postalList.add(postal);
+            if(postal.getProductName().contains("国内快递包裹物品经济时限")){
+
+            }else{
+
+            }
 
         }
-        return "";
+        return postalList;
     }
 
     private String formatField(String field) {
@@ -222,6 +276,17 @@ public class PasePostal {
         }
         return "";
     }
+
+
+    public static void main(String[] args) {
+        try {
+            Map<String, List<Postal>> map = new PasePostal().analyseFile(new File("f:test.xls"), 1);
+            System.out.println(map);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
 
 
 

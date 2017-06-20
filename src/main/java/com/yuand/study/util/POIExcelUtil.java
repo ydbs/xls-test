@@ -32,7 +32,7 @@ public class POIExcelUtil {
 
 
     /**限制的总行数*/
-    private int limitTotalRows =500;
+    private int limitTotalRows =1000000;
 
     /** 构造方法 */
     public POIExcelUtil()
