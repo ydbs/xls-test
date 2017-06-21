@@ -11,6 +11,7 @@ import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
 import java.io.*;
+import java.text.SimpleDateFormat;
 import java.util.*;
 
 /**
@@ -112,6 +113,7 @@ public class PasePostal {
 
     private void exitOutExcel() {
         Workbook wb = new XSSFWorkbook();
+        SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd");
         try {
             writeExcel(wb, fileHeader.get(2), standPostalList, "标件收支");
             writeExcel(wb, fileHeader.get(2), fastPostalList, "快件收支");
@@ -119,7 +121,8 @@ public class PasePostal {
             writeReportExcel(wb, fileHeader.get(6), courierReportMap, "揽收员统计");
             writeSortReportExcel(wb, sortReportMap, "分类统计");
 
-            String pathname = this.getClass().getResource("/").getPath() + "test.xls";
+
+            String pathname = getJarDir() + "/分析统计"+format.format(new Date())+".xls";
             // 文件流
             File file = new File(pathname);
             OutputStream os = new FileOutputStream(file);
@@ -855,15 +858,84 @@ public class PasePostal {
 
 
     public static void main(String[] args) {
-        if(args.length < 2){
-            System.out.println("参数必须包含读取文件路径和输出文件夹路径");
+        System.out.println("当前路径："+ getJarPath());
+        System.out.println("当前目录："+ getJarDir());
+        if(args.length < 1){
+            System.out.println("参数必须包含读取文件路径");
+            System.out.println("usage:\n" +
+                    "java -jar xls-test.jar inputFile.xls");
             return;
+        }else{
+            if(args[0].endsWith(".xls") || args[0].endsWith(".xlsx") ){
+                System.out.println("分析的文件:"+ args[0]);
+                try {
+                    new PasePostal().analyseFile(new File(args[0]));
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }else{
+                System.out.println("文件类型不正确");
+            }
+
         }
-        try {
-            new PasePostal().analyseFile(new File(args[0]));
-        } catch (Exception e) {
-            e.printStackTrace();
+    }
+    /**
+     * 获取jar绝对路径
+     *
+     * @return
+     */
+    public static String getJarPath()
+    {
+        File file = getFile();
+        if (file == null)
+            return null;
+        return file.getAbsolutePath();
+    }
+
+    /**
+     * 获取jar目录
+     *
+     * @return
+     */
+    public static String getJarDir()
+    {
+        File file = getFile();
+        if (file == null)
+            return null;
+        return getFile().getParent();
+    }
+
+    /**
+     * 获取jar包名
+     *
+     * @return
+     */
+    public static String getJarName()
+    {
+        File file = getFile();
+        if (file == null)
+            return null;
+        return getFile().getName();
+    }
+
+    /**
+     * 获取当前Jar文件
+     *
+     * @return
+     */
+    private static File getFile()
+    {
+        // 关键是这行...
+        String path = PasePostal.class.getProtectionDomain().getCodeSource().getLocation().getFile();
+        try
+        {
+            path = java.net.URLDecoder.decode(path, "UTF-8"); // 转换处理中文及空格
         }
+        catch (java.io.UnsupportedEncodingException e)
+        {
+            return null;
+        }
+        return new File(path);
     }
 
 
