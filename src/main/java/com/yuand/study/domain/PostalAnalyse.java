@@ -1,5 +1,7 @@
 package com.yuand.study.domain;
 
+import com.yuand.study.util.PostalUtil;
+
 /**
  * 标件收支 和 快包收支 明细
  * Created by Administrator on 2017/6/20 0020.
@@ -35,6 +37,28 @@ public class PostalAnalyse {
     private double twoFree;
 
     private double totalFree;
+
+    public PostalAnalyse(Postal postal,int type) {
+        this.postal = postal;
+        this.busNum = postal.getNum();
+        this.totalWeight = postal.getChargedWeight()/1000.0;
+        this.free = postal.getTotalPostage() * 0.15;
+        if(this.totalWeight/this.busNum<=3){
+            this.innerFree = 2.1;
+        }else {
+            if(this.totalWeight/this.busNum<=5){
+                this.innerFree = ((Math.ceil(this.totalWeight / (this.busNum * 0.1)) - 3) * 0.6 + 2.1 + this.totalWeight * 0.09) * this.busNum;
+            }else{
+                this.innerFree = (((Math.ceil(this.totalWeight/(this.busNum*0.1))-5)*0.7+3.3)+this.totalWeight*0.09) * this.busNum;
+            }
+        }
+        Price price = PostalUtil.getInstence().searchPriceBySrcAddress(postal.getAddress(),type);
+        this.airfreight = price == null?0:price.getAirFree() * this.totalWeight;
+        this.oneFree = price == null?0:price.getOneFree() * this.totalWeight;
+        this.twoFree =  price == null?0:price.getTwoFree() * this.totalWeight;
+
+        this.totalFree = this.free+this.innerFree+this.airfreight+this.oneFree +this.twoFree;
+    }
 
     public Postal getPostal() {
         return postal;

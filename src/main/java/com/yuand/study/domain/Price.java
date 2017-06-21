@@ -23,6 +23,13 @@ public class Price {
 
     private double twoFree;
 
+    public Price(int type) {
+        this.type = type;
+        if(type == 3){
+            this.srcAdress = "岳阳至";
+        }
+    }
+
     public int getType() {
         return type;
     }

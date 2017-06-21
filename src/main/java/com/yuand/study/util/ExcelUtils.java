@@ -241,13 +241,13 @@ public class ExcelUtils {
 
 
     public static void main(String[] args) throws IOException {
-		 readFromExcelDemo1();
+//		 readFromExcelDemo1();
 
 //		String filePath = "E:/test.xlsx";
 //		readFromExcelDemo(filePath);//从一个指定的excel文件中读取内容
 
 
-//        writeToExcelDemo();
+        writeToExcelDemo();
     }
     public static void writeToExcelDemo() throws IOException {
         /**
